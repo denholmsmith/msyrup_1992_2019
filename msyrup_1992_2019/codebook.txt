@@ -1,0 +1,13 @@
+Data source: https://www.uvm.edu/femc/data/archive/project/sugarmaple_production/dataset/maple-syrup-production/overview
+
+Variable names and descriptions:
+
+Program = data collection method
+Year = year according to gregorian calendar
+Geo_Level = level of greophical information
+State = state within the US from which the data were collected
+State_NAS = American National Standards Institute (ANSI) Codes for States
+Commodity = ommodity produced
+ProductionInDollars = amount of commodity sold in United States Dollar (USD)
+ProductionInGallons = amount of commodity produced in gallons
+PriceReceivedDollarsPerGallon = USD received per gallon of commodity sold

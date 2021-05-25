@@ -1,0 +1,105 @@
+---
+title: "Maple Syrup Data Visualisation"
+author: "Denholm Smith"
+date: "25/02/2021"
+output: html_document
+---
+
+## Load data and libraries
+
+```{r}
+library(tidyverse)
+library(zoo)
+ms_data <- read.csv(file = 'data/Z1151_2815_EABP1E.csv')
+```
+
+## The Purpose of this Data Visualisation Project
+
+Vermont in the United States (US) is a large producer of maple cyrup, with the sale of maple syrup contributing around $300 million per year to its economy. However, the production of maple syrup is heavily dependent on favourable climate conditions - both the quality and quantity produced can vary dependent on the climate conditions. Given that the Earth is currently experiencing an unprecedented shift in climate conditions, could Vermont's status as a US superpower of the maple cyrup industry be in jeopordy? This data visualisation project will not conduct any statistical analyses to determine casual or correlational effects of climate changes on vermont's maple cyrup production. Instead, this project will visualise data that could help to determine at a surface level whether there is a shift in production quality by proxy of remuneration, making comparisons to two other US states that produce large amount of maple cyrup; New York and New Hampshire. The data that we will use is available from 1992 to 2019.
+
+It may first be useful to contextualise the scale of maple cyrup production in each state from 1992 to 2019 and its contribution to the economy. We can do this by visualising the sum of money received by each state for their maple cyrup:
+
+```{r}
+sums <- ms_data %>% #here we create a new dataframe called sums. This is so that we can call this dataframe to create our bar chart
+        group_by(State) %>% 
+        summarise_at(vars(ProductionInDollars), funs(sum(., na.rm=TRUE))) #this creates our new sum value for dollars received per state
+
+bar_01 <- ggplot(data = sums, mapping = aes(x = State, y = ProductionInDollars)) + 
+                                                           geom_bar(stat = "identity", colour = "black", fill = c("#593000", "#ff8800", "#fccf65")) + 
+                                                           xlab("State") +
+                                                           ylab("Total Dollars Received") +
+                                                           scale_y_continuous(labels = scales::comma) + 
+                                                           coord_flip() +
+                                                           ggtitle("Total Dollars Received for Maple Cyrup by State, 1992 - 2019") +
+                                                           theme_minimal() 
+                                                           #here we have created our scales and filled them with our data
+                                                           
+print(bar_01)
+ggsave(filename = file.path("images","bar_01.png"))
+```
+
+So now we have confirmed that from 1992 to 2019, Vermont is the largest economic contributer in the maple cyrup production industry in our sample ahead of New York and then New Hampshire. However, given that as stated earlier the earth's climate is changing, it is of interest to us to dig a little further. What we want to find out is whether this economic impact is changing with time. Perhaps the dollars received by each state per gallon could act as a proxy for whether the quality of maple cyrup is changing?
+
+## Plot of dollars received per gallon per year, grouped by state
+
+```{r}
+line_01 <- ggplot(data = ms_data, mapping = aes(x = Year, y = PriceReceivedDollarsPerGallon, #here we create our graph upon which data layers will be added
+                                                              colour = State, #colouring by state for clarity
+                                                              shape = State)) #state dependent shapes for visually impaired individuals
+line_01 <- line_01 + geom_line() +
+           geom_point(size = 2) +
+           xlab("Year") + ylab("Dollars Received per Gallon") +
+           scale_colour_manual(values = c("#593000", "#ff8800", "#fccf65")) +
+           scale_y_continuous(labels = scales::comma) +
+           ggtitle("Dollars Received per Gallon per Year by State") +
+           theme_minimal()
+
+print(line_01)
+ggsave(filename = file.path("images","line_01.png"))
+```
+
+Above we can see that New Hampshire has consistently received the highest dollar payment for their production of maple cyrup. New York and Vermont appear as though they could be catching up in percentage terms, but the data as it stands is a bit messy and so any true patterns are hard to detect. A good way to smooth out the data to show up any patterns could be to compute a rolling average. In this visualisation, we will compute both a 3 and 5 year rolling average to determine whether there is a pattern that emerges:
+
+## Rolling average of dollars received per gallon
+
+The data above looks a little messy so we can tidy it up by computing a rolling average. Let's compute a 3 and 5 year average and see which looks best when plotted. Note that we have to be careful to group by US sate here. If we do not do this, we would see the beginning and end years for each state average with each other and contaminate our data.
+
+```{r}
+ms_data_rolling <- ms_data %>% group_by(State) %>% #group by state to avoid our rolling avg containing data from other states. New dataframe created
+                               mutate(price_received_03 = rollmean(PriceReceivedDollarsPerGallon, k = 3, fill = 0), #rollmean computes our rolling avg
+                                      price_received_05 = rollmean(PriceReceivedDollarsPerGallon, k = 5, fill = 0))
+ms_data_rolling <- filter(ms_data_rolling, price_received_03 > 0) #we retain only values > 0, otherwise our lines will droop at the ends
+ms_data_rolling <- filter(ms_data_rolling, price_received_05 > 0)
+
+line_02 <- ggplot(data = ms_data_rolling, mapping = aes(x = Year, y = price_received_03, 
+                                                                      colour = State, 
+                                                                      shape = State))
+line_02 <- line_02 + geom_line() +
+           geom_point(size = 2) +
+           xlab("Year") + ylab("Dollars per Gallon 3 Year Rolling") +
+           scale_colour_manual(values = c("#593000", "#ff8800", "#fccf65")) +
+           scale_y_continuous(labels = scales::comma) +
+           ggtitle("Three Year Rolling Average of Dollars Received per Year by State") +
+           theme_minimal()
+           
+print(line_02)
+ggsave(filename = file.path("images","line_02.png"))
+```
+
+```{r}
+line_03 <- ggplot(data = ms_data_rolling, mapping = aes(x = Year, y = price_received_05, 
+                                                                      colour = State, 
+                                                                      shape = State))
+line_03 <- line_03 + geom_line() +
+           geom_point(size = 2) +
+           xlab("Year") + ylab("Dollars per Gallon 5 Year Rolling") +
+           scale_colour_manual(values = c("#593000", "#ff8800", "#fccf65")) +
+           scale_y_continuous(labels = scales::comma) +
+           ggtitle("Five Year Rolling Average of Dollars Received per Year by State") +
+           theme_minimal()
+           
+print(line_03)
+ggsave(filename = file.path("images","line_03.png"))
+```
+
+Both the 3 and the 5 year rolling average visualisation seem to show that for New York and Vermont, the dollar amount received per gallon of maple syrup had been catchin up to New Hampshire. However, in recent years this rate of catching has slowed, and indeed in the most recent years has seen a sharp decline in relation to New Hampshire. Whether dollars received per gallon can truly be used as a proxy for maple cyrup quality cannot really be determined from this dataset, however the visualisations produced in this project do suggest there may be some changing of the landscape occurring in the US maple cyrup industry. Primarily, this is that New Hampshire appear to be pulling away from New York and Vermont in their remuneration for producing maple cyrup. 
